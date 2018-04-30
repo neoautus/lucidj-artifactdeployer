@@ -65,7 +65,7 @@
         </resolvePath>
 
         <resolvePath id="default/slf4j-api">
-            <ivy:dependency org="org.slf4j" name="slf4j-api" rev="[1.7,2.0)" transitive="false"/>
+            <ivy:dependency org="org.slf4j" name="slf4j-api" rev="1.7.25" transitive="false"/>
         </resolvePath>
 
     </target>

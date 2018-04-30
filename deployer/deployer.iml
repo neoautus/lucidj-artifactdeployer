@@ -12,12 +12,12 @@
     <orderEntry type="module-library" scope="PROVIDED">
       <library name="api.lucidj.artdeployer-1.0.0">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../api/dist/api.lucidj.artdeployer-1.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../dist/api.lucidj.artdeployer-1.0.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />
       </library>
     </orderEntry>
-    <orderEntry type="library" name="SLF4J API" level="project" />
+    <orderEntry type="library" scope="PROVIDED" name="SLF4J API" level="project" />
   </component>
 </module>
