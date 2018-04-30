@@ -1,0 +1,62 @@
+= LucidJ Artifact Deployer
+// Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+//
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
+
+LucidJ Artifact Deployer replaces some functionality from venerable fileinstall.
+
+== Prerequisites for Building
+
+* Java Development Kit 8 or later
+* Ant (minimun Ant 1.8.0)
+
+== Before Starting
+
+The examples were built to illustrate both functionality and implementation. They are IDE-agnostic, showing all the steps to build an OSGi application from zero without need of a particular combination of IDE and plugin or any wizzard tool.
+
+We achieve this using Ant. Today, you can also use Maven to build any OSGi project, however Maven is magical in it's own way, because there are many predefined (and sane) defaults. You may choose Maven for your own projects. On the other side, Ant allows you to follow the logic of building an OSGi jar file, with all required steps very visible. We strongly suggest you to take a time to look into `build.xml` and `configure.xml` to get a good idea of whats going on, and how things are being done. It may look intimidating at first, but hopefully will also be instructive.
+
+Specially, you will get known to `Bnd` (http://bndtools.org/), which is *the* reference tool to build all OSGi-related stuff you can imagine. There's also the iPojo processor, which manipulates the code after compilation and demonstrates the post-processing of OSGi jar bundles.
+
+=== Building
+
+TODO: Add instructions for building.
+
+To build _all_ subprojects at once, just type `ant` on project root.
+
+By default, Ant will download and cache all needed tools, then invoke the `build-all` target. The output of all builds will be located in `dist/` directory beneath every subproject. Karaf stage, will be built by default, so all bundles will be deployed into Karaf. If you change the stage to Felix (changing the stage target to Felix all bundles will
+
+=== Useful Ant targets
+
+For details on building the code, see `ant -p`.
+
+These are the available targets:
+
+* `ant build-all`: builds all available subprojects;
+* `ant clean`: removes the `build` and `dist` directories;
+* `ant zero`: same as `clean`, but also removes the `cache` directory with all downloaded tools;
+* `ant configure`: rebuild the library and tools cache.
+
+== Important Resources
+
+If you need further information, please refer to the following resources:
+
+* http://njbartlett.name/osgibook.html[OSGi in Practice^]: Free, Creative Commons-licensed book on OSGi by Neil Bartlett.
+* https://www.osgi.org/developer/resources/learning-resources-tutorials/tutorial-archive/[Tutorial Archive from OSGi Alliance^]: Lots of great articles and resources.
+* http://bndtools.org/[BND Tools^]: The standard OSGi tool to build artifacts.
+* https://www.osgi.org/developer/specifications/[OSGi Specifications^]: All OSGi specifications available from OSGi Alliance.
+* https://www.osgi.org/osgi-release-5-javadoc/[OSGi Release 5 Javadoc^]: Browse online the javadocs for OSGi R5 APIs.
+
+== Copyright
+
+This work is licensed under a http://www.apache.org/licenses/LICENSE-2.0[Apache License, Version 2.0].

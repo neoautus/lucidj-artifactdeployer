@@ -1,0 +1,505 @@
+<?xml version="1.0"?>
+<!--
+   Copyright 2018 NEOautus Ltd. (http://neoautus.com)
+
+   Licensed under the Apache License, Version 2.0 (the "License"); you may not
+   use this file except in compliance with the License. You may obtain a copy of
+   the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+   WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+   License for the specific language governing permissions and limitations under
+   the License.
+-->
+<project name="configure" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+    <property name="docs.dir" value="${basedir}/docs"/>
+    <property name="dist.dir" value="${basedir}/dist"/>
+    <property name="build.dir" value="${basedir}/build"/>
+
+    <dirname property="configure.dir" file="${ant.file.configure}"/>
+    <property name="cache.dir" value="${configure.dir}/cache"/>
+    <property name="libcache.dir" value="${cache.dir}/lib"/>
+    <property name="tmp.dir" value="${cache.dir}/tmp"/>
+
+    <!-- Comment out if you want default Ivy cache location ${user.home}/.ivy2 -->
+    <property name="ivy.default.ivy.user.dir" value="${cache.dir}/ivy2" />
+
+    <property name="stage.dir" value="${configure.dir}/stage"/>
+    <condition property="stage.available.flag">
+        <available file="${stage.dir}" type="dir"/>
+    </condition>
+
+    <property name="javac.source" value="1.8"/>
+    <property name="javac.target" value="1.8"/>
+    <property name="javac.debug" value="true"/>
+    <property name="javac.debuglevel" value="lines,vars,source"/>
+    <property name="javac.deprecation" value="on"/>
+    <property name="javac.optional" value="-Xlint:unchecked"/>
+    <!--property name="javac.bootclasspath" value="${basedir}/extras/java-rt/rt.jar:${basedir}/extras/java-rt/jce.jar"/-->
+
+    <property name="setup.ok.file" value="${cache.dir}/setup.ok"/>
+    <condition property="setup.ok.flag">
+        <available file="${setup.ok.file}"/>
+    </condition>
+
+    <target name="getlibs"
+        description="Retrieve default libraries from maven repositories.">
+
+        <resolvePath id="default/osgi">
+            <ivy:dependency org="org.osgi" name="org.osgi.core" rev="5.0.0"/>
+            <ivy:dependency org="org.osgi" name="org.osgi.compendium" rev="5.0.0"/>
+            <ivy:dependency org="org.osgi" name="org.osgi.enterprise" rev="5.0.0"/>
+        </resolvePath>
+
+        <property name="ipojo.rev" value="1.12.1"/>
+        <resolvePath id="default/ipojo">
+            <ivy:dependency org="org.apache.felix" name="org.apache.felix.ipojo" rev="${ipojo.rev}" transitive="false"/>
+            <ivy:dependency org="org.apache.felix" name="org.apache.felix.ipojo.api" rev="${ipojo.rev}" transitive="false"/>
+            <ivy:dependency org="org.apache.felix" name="org.apache.felix.ipojo.annotations" rev="${ipojo.rev}" transitive="false"/>
+            <!--dependency org="org.apache.felix" name="org.apache.felix.ipojo.handler.eventadmin" rev="1.8.0"/-->
+            <ivy:dependency org="org.apache.felix" name="org.apache.felix.ipojo.handler.extender" rev="1.4.0" transitive="false"/>
+        </resolvePath>
+
+        <resolvePath id="default/slf4j-api">
+            <ivy:dependency org="org.slf4j" name="slf4j-api" rev="[1.7,2.0)" transitive="false"/>
+        </resolvePath>
+
+    </target>
+
+    <target name="setup" unless="setup.ok.flag"
+        description="Retrieve base tools for this project.">
+
+        <!-- Get Ivy -->
+        <mkdir dir="${cache.dir}/setup"/>
+        <get dest="${cache.dir}/setup/ivy.jar"
+             src="http://search.maven.org/remotecontent?filepath=org/apache/ivy/ivy/2.4.0/ivy-2.4.0.jar"
+             skipexisting="true"/>
+
+        <!-- Get Ant-Contrib -->
+        <get dest="${cache.dir}/setup/ant-contrib.jar"
+             src="http://search.maven.org/remotecontent?filepath=ant-contrib/ant-contrib/1.0b3/ant-contrib-1.0b3.jar"
+             skipexisting="true"/>
+
+        <!-- Done! -->
+        <touch file="${setup.ok.file}" verbose="false"/>
+    </target>
+
+    <!-- Fetch dependencies and place jars on cache/lib/[dependency-group] -->
+    <macrodef name="resolvePath">
+        <attribute name="id"/>
+        <attribute name="type" default="jar,bundle"/>
+        <attribute name="offline" default="false"/>
+        <attribute name="sync" default="false"/>
+        <element name="dependency-list" implicit="true" optional="no"/>
+        <sequential>
+            <local name="resolve.ok.file"/>
+            <property name="resolve.ok.file" value="${libcache.dir}/@{id}/resolve.ok"/>
+            <if><not><available file="${resolve.ok.file}"/></not>
+                <then>
+                    <echo taskname="resolvePath" message=":: Resolving dependencies for: @{id}"/>
+                    <ivy:resolve resolveid="@{id}.resolve"
+                        log="download-only" useCacheOnly="@{offline}" type="@{type}">
+                        <dependency-list/>
+                    </ivy:resolve>
+                    <ivy:retrieve taskname="resolvePath"
+                        sync="@{sync}" type="@{type}" resolveid="@{id}.resolve"
+                        pattern="${libcache.dir}/@{id}/[type]/[artifact]-[revision].[ext]"/>
+                    <touch file="${resolve.ok.file}" verbose="false"/>
+                </then>
+            </if>
+            <path id="@{id}">
+                <fileset dir="${libcache.dir}/@{id}" includes="**/*.jar"/>
+            </path>
+            <!--echo message="Path @{id}: ${ant.refid:@{id}}"/-->
+        </sequential>
+    </macrodef>
+
+    <target name="setup-tasks" depends="setup">
+
+        <!-- Apache Ivy -->
+        <taskdef resource="org/apache/ivy/ant/antlib.xml" uri="antlib:org.apache.ivy.ant">
+            <classpath>
+                <fileset dir="${cache.dir}/setup" includes="ivy.jar"/>
+            </classpath>
+        </taskdef>
+
+        <!-- Ant-Contrib -->
+        <taskdef resource="net/sf/antcontrib/antlib.xml">
+            <classpath>
+                <fileset dir="${cache.dir}/setup" includes="ant-contrib.jar"/>
+            </classpath>
+        </taskdef>
+
+        <!-- Bnd Tasks -->
+        <resolvePath id="tasks/bnd">
+            <ivy:dependency org="biz.aQute.bnd" name="bnd" rev="2.4.0" transitive="false"/>
+        </resolvePath>
+        <taskdef resource="aQute/bnd/ant/taskdef.properties" classpathref="tasks/bnd"/>
+
+        <!-- iPojo Tasks -->
+        <resolvePath id="tasks/ipojo">
+            <dependency org="org.apache.felix" name="org.apache.felix.ipojo.ant" rev="1.12.1"/>
+            <dependency org="org.apache.felix" name="org.apache.felix.ipojo.metadata" rev="1.6.0"/>
+            <dependency org="org.apache.felix" name="org.apache.felix.ipojo.annotations" rev="1.12.1"/>
+            <dependency org="org.ow2.asm" name="asm-all" rev="5.0.2"/>
+        </resolvePath>
+        <taskdef name="ipojo" classname="org.apache.felix.ipojo.task.IPojoTask" classpathref="tasks/ipojo"/>
+
+    </target>
+
+    <target name="init" depends="setup-tasks, getlibs">
+
+        <path id="tasks.path">
+            <fileset dir="${libcache.dir}/tasks" includes="**/*.jar"/>
+        </path>
+
+        <path id="default.path">
+            <fileset dir="${libcache.dir}/default" includes="**/*.jar"/>
+        </path>
+
+    </target>
+
+    <target name="clean"
+        description="Clear all build artifacts created by the project.">
+        <delete dir="${build.dir}"/>
+        <delete dir="${dist.dir}"/>
+    </target>
+
+    <target name="zero" depends="clean"
+        description="Clear all build artifacts created by the project AND the stage.">
+        <delete dir="${stage.dir}"/>
+    </target>
+
+    <target name="reconfigure"
+        description="Clear all Ivy/Maven caches and retrieve all external dependencies.">
+        <delete dir="${cache.dir}"/>
+        <ant target="init" inheritall="false"/>
+    </target>
+
+    <target name="configure"
+        description="Clear library caches and retrieve all external dependencies.">
+        <delete dir="${cache.dir}/lib"/>
+        <ant target="init" inheritall="false"/>
+    </target>
+
+    <!-- Wrap any jar more or less like wrap: protocol -->
+    <!-- src: full path for source jar -->
+    <!-- dest: destination directory OR full path of wrapped jar -->
+    <macrodef name="wrapjar">
+        <attribute name="src"/>
+        <attribute name="dest"/>
+        <attribute name="excludes" default="!javax.*"/>
+        <sequential>
+            <basename property="src.basename" file="@{src}" suffix=".jar"/>
+            <propertyregex property="bsn" input="${src.basename}"
+                regexp="(.*)-(\d+\..*)" select="\1" defaultValue="${src.basename}"/>
+            <propertyregex property="version" input="${src.basename}"
+                regexp="(.*)-(\d+\..*)" select="\2" defaultValue="0.0.0"/>
+            <condition property="output.jar" value="@{dest}/${src.basename}.jar" else="@{dest}">
+                <available file="@{dest}" type="dir"/>
+            </condition>
+            <property name="output.bnd" value="${output.jar}.bnd"/>
+            <echo file="${output.bnd}">
+                Bundle-SymbolicName: ${bsn}
+                Bundle-Name: wrapped-${bsn}
+                Bundle-Version: ${version}
+                Import-Package: *;resolution:=optional
+                Export-Package: @{excludes},*;version=${version}
+            </echo>
+            <bnd files="${output.bnd}" output="${output.jar}"
+                    eclipse="false" failok="false" exceptions="true">
+                <classpath location="@{src}"/>
+            </bnd>
+            <jar destfile="${output.jar}" update="true" filesonly="true">
+                <zipfileset src="@{src}">
+                    <include name="**/*"/>
+                    <exclude name="**/*.class"/>
+                </zipfileset>
+            </jar>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="urlescape">
+        <attribute name="name"/>
+        <attribute name="value"/>
+        <sequential>
+            <loadresource property="@{name}">
+                <string value="@{value}"/>
+                <filterchain>
+                    <tokenfilter>
+                    <filetokenizer/>
+                        <!-- TODO: WHAT MORE? IS THERE A BETTER WAY?? -->
+                        <replacestring from=" " to="%20"/>
+                    </tokenfilter>
+                </filterchain>
+            </loadresource>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="deploy">
+        <attribute name="file"/>
+        <sequential>
+            <if><isset property="stage.available.flag"/>
+                <then>
+                    <property file="${stage.dir}/deploy.properties"/>
+                    <property name="deploy.dir" value="${stage.dir}/deploy"/>
+                    <copy file="@{file}" todir="${deploy.dir}"
+                        overwrite="true" taskname="deploy"/>
+                </then>
+                <else>
+                    <if><http url="http://localhost:8181/~localsvc/deploy"/>
+                        <then>
+                            <echo taskname="deploy" message="Remote deploy: @{file}"/>
+                            <local name="file.location"/>
+                            <urlescape name="file.location" value="@{file}"/>
+                            <concat taskname="deploy">
+                                <url url="http://localhost:8181/~localsvc/deploy?file:${file.location}"/>
+                            </concat>
+                        </then>
+                    </if>
+                </else>
+            </if>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="iterate">
+        <attribute name="target"/>
+        <attribute name="dir" default="${basedir}"/>
+        <attribute name="includes" default="*/build.xml"/>
+        <sequential>
+            <subant target="@{target}">
+                <fileset dir="@{dir}" includes="@{includes}"/>
+            </subant>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="listpackages">
+        <attribute name="dir"/>
+        <attribute name="property"/>
+        <sequential>
+            <fileset dir="@{dir}" id="classes">
+                <include name="**/*.class"/>
+                <exclude name="code/**"/>
+            </fileset>
+            <local name="packages"/>
+            <pathconvert dirsep="/" refid="classes" property="packages" pathsep="," setonempty="false">
+                <mapper type="regexp" from="@{dir}/(.*)/.*\.class" to="\1" />
+            </pathconvert>
+            <dirset id="unique.packages" dir="@{dir}" includes="${packages}"/>
+            <pathconvert dirsep="." refid="unique.packages" property="@{property}" pathsep=", ">
+                <map from="@{dir}/" to=""/>
+            </pathconvert>
+        </sequential>
+    </macrodef>
+
+    <macrodef name="build.bundle">
+        <attribute name="symbolicName"/>
+        <attribute name="version" default="0.0.0"/>
+        <attribute name="src"/>
+        <attribute name="bnd" default="auto"/>
+        <attribute name="exports" default="void"/>
+        <attribute name="ipojo" default="true"/>
+        <attribute name="outfileProperty" default="bundle.temp.jar"/>
+        <attribute name="defaultPathId" default="default.path"/>
+        <element name="classpaths" optional="yes"/>
+        <element name="privateClasspath" optional="yes"/>
+        <sequential>
+            <local name="module.build.dir"/>
+            <property name="module.build.dir" value="${build.dir}/@{symbolicName}-@{version}"/>
+            <local name="module.classes.dir"/>
+            <property name="module.classes.dir" value="${module.build.dir}/classes"/>
+            <local name="module.dist.dir"/>
+            <property name="module.dist.dir" value="${dist.dir}"/>
+            <local name="module.dist.jar"/>
+            <property name="module.dist.jar" value="${module.dist.dir}/@{symbolicName}-@{version}.jar"/>
+            <local name="bundle.temp.jar"/>
+            <property name="@{outfileProperty}" value="${module.dist.jar}"/>
+
+            <delete dir="${module.classes.dir}"/>
+            <mkdir dir="${module.classes.dir}"/>
+
+            <!-- ================================= -->
+            <!-- Embed private libraries/classpath -->
+            <!-- ================================= -->
+
+            <copy todir="${module.build.dir}/private" overwrite="true" flatten="true">
+                <fileset dir="@{src}" includes="-*"/><!-- just satisfy copy if no privateClasspath -->
+                <privateClasspath/>
+            </copy>
+
+            <path id="private.path">
+                <fileset dir="${module.build.dir}">
+                    <include name="private/**/*.jar"/>
+                </fileset>
+            </path>
+
+            <path id="excludeDefault"/>
+
+            <!-- ================= -->
+            <!-- Javac as usual... -->
+            <!-- ================= -->
+
+            <path id="build.bundle.path">
+                <pathelement path="${module.classes.dir}"/>
+                <path refid="private.path"/>
+                <classpaths/>
+                <path refid="@{defaultPathId}"/>
+            </path>
+
+            <javac srcdir="@{src}" destdir="${module.classes.dir}"
+                   source="${javac.source}" target="${javac.target}"
+                   debug="${javac.debug}" debuglevel="${javac.debuglevel}" deprecation="${javac.deprecation}"
+                   includeantruntime="false">
+                <compilerarg value="${javac.optional}"/>
+                <classpath refid="build.bundle.path"/>
+            </javac>
+
+            <delete file="${module.dist.jar}"/>
+            <mkdir dir="${module.dist.dir}"/>
+
+            <!-- ========================= -->
+            <!-- Let's build a OSGi Bundle -->
+            <!-- ========================= -->
+
+            <!--
+                We can't just create a jar at this point, because we
+                need a _bnd file_ to describe to Bnd Tool what to do.
+                The bnd file is much like a recipe. More info at:
+                http://bnd.bndtools.org/chapters/160-jars.html
+            -->
+
+            <!-- Creates simple bnd file if @bnd param set to auto -->
+            <local name="bnd.file"/>
+            <property name="bnd.file" value="${module.build.dir}/bundle.bnd"/>
+            <if><equals arg1="@{bnd}" arg2="auto"/>
+                <then>
+                    <echo message="Bundle descriptor set to automatic"/>
+                    <echo file="${bnd.file}" append="false"
+                          message="### Start of generated content ###${line.separator}"/>
+                    <echo file="${bnd.file}" append="true"
+                          message="Bundle-Name: @{symbolicName}-@{version}${line.separator}"/>
+                    <echo file="${bnd.file}" append="true"
+                          message="Bundle-SymbolicName: @{symbolicName}${line.separator}"/>
+                    <echo file="${bnd.file}" append="true"
+                          message="Bundle-Version: @{version}${line.separator}"/>
+
+                    <!-- Magically extracts all used packages directly from compiled classes dir -->
+                    <local name="package.list"/>
+                    <listpackages dir="${module.classes.dir}" property="package.list"/>
+                    <echo file="${bnd.file}" append="true"
+                          message="Private-Package: ${package.list}${line.separator}"/>
+
+                    <!-- Include private classpath if it exists -->
+                    <if><resourcecount refid="private.path" when="greater" count="0"/>
+                        <then>
+                            <!-- We need to cut-off the base directory and separate the list with ',' -->
+                            <local name="private.path.bnd"/>
+                            <pathconvert refid="private.path" property="private.path.bnd" dirsep="/" pathsep=",">
+                                <map from="${module.build.dir}/" to=""/>
+                            </pathconvert>
+                            <!-- Set the handy Bundle-ClassPath to include all embedded libraries -->
+                            <echo file="${bnd.file}" append="true"
+                                  message="Bundle-ClassPath: .,${private.path.bnd}${line.separator}"/>
+                            <!-- We need to include private/ as resource, so the libraries get included into bundle -->
+                            <echo file="${bnd.file}" append="true"
+                                  message="Include-Resource: private=private${line.separator}"/>
+                        </then>
+                    </if>
+                </then>
+                <else>
+                    <copy file="@{bnd}" tofile="${bnd.file}" overwrite="true"/>
+                </else>
+            </if>
+
+            <!-- We may have a exports parameter -->
+            <if><not><equals arg1="@{exports}" arg2="void"/></not>
+                <then>
+                    <echo file="${bnd.file}" append="true"
+                          message="Export-Package: @{exports}${line.separator}"/>
+                </then>
+            </if>
+
+            <!-- Append bundle.inc to bundle.bnd, if it exists -->
+            <if><available file="@{src}/../bundle.inc"/>
+                <then>
+                    <concat destfile="${bnd.file}" append="true">
+                        <file name="@{src}/../bundle.inc"/>
+                    </concat>
+                </then>
+            </if>
+
+            <!--
+                At this point we have either a user-provided bnd file OR
+                a generated one. Now we are ready to create the OSGi bundle!
+            -->
+
+            <!-- Invokes the Bnd Tool task to create our jar bundle -->
+            <bnd files="${bnd.file}" output="${module.dist.jar}"
+                 eclipse="false" failok="false" exceptions="true">
+                <classpath refid="build.bundle.path"/>
+            </bnd>
+
+            <!-- Add full resources/ dir if it exists -->
+            <if><available file="@{src}/../resources" type="dir"/>
+                <then>
+                    <jar destfile="${module.dist.jar}" update="true">
+                        <fileset dir="@{src}/../resources" includes="**/*"/>
+                    </jar>
+                </then>
+            </if>
+
+            <!-- ================================ -->
+            <!-- Extra steps: Apply iPOJO tooling -->
+            <!-- ================================ -->
+
+            <if><istrue value="@{ipojo}"/>
+                <then>
+                    <ipojo input="${module.dist.jar}">
+                        <classpath refid="build.bundle.path"/>
+                    </ipojo>
+                </then>
+            </if>
+
+        </sequential>
+    </macrodef>
+
+    <macrodef name="build.module">
+        <attribute name="dir"/>
+        <attribute name="symbolicName"/>
+        <attribute name="version" default="0.0.0"/>
+        <attribute name="ipojo" default="true"/>
+        <attribute name="deploy" default="false"/>
+        <attribute name="exports" default="void"/><!-- TODO: Make an 'auto' which auto-exports all -->
+        <attribute name="outfileProperty" default="module.temp.jar"/>
+        <element name="classpath" optional="yes"/>
+        <sequential>
+            <local name="bnd.file"/>
+            <condition property="bnd.file" value="@{module.dir}/bundle.bnd" else="auto">
+                <available file="@{module.dir}/bundle.bnd"/>
+            </condition>
+
+            <local name="module.temp.jar"/>
+            <build.bundle bnd="${bnd.file}" src="@{dir}/src" exports="@{exports}" version="@{version}"
+                symbolicName="@{symbolicName}" outfileProperty="@{outfileProperty}">
+                <classpaths>
+                    <classpath/>
+                </classpaths>
+                <privateClasspath>
+                    <fileset dir="@{dir}">
+                        <include name="private/**/*.jar"/>
+                    </fileset>
+                </privateClasspath>
+            </build.bundle>
+            <if><istrue value="@{deploy}"/>
+                <then>
+                    <deploy file="${@{outfileProperty}}"/>
+                </then>
+            </if>
+        </sequential>
+    </macrodef>
+
+</project>

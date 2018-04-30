@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="OSGi R5">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/cache/lib/default/osgi/jar/org.osgi.core-5.0.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cache/lib/default/osgi/jar/org.osgi.compendium-5.0.0.jar!/" />
+      <root url="jar://$PROJECT_DIR$/cache/lib/default/osgi/jar/org.osgi.enterprise-5.0.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

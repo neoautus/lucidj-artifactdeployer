@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/api/api.iml" filepath="$PROJECT_DIR$/api/api.iml" />
+      <module fileurl="file://$PROJECT_DIR$/deployer/deployer.iml" filepath="$PROJECT_DIR$/deployer/deployer.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/lucidj-artifactdeployer.iml" filepath="$PROJECT_DIR$/.idea/lucidj-artifactdeployer.iml" />
+    </modules>
+  </component>
+</project>
