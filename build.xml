@@ -40,8 +40,4 @@
         <antcall target="build-all"/>
     </target>
 
-    <target name="clean">
-        <iterate target="clean"/>
-    </target>
-
 </project>
