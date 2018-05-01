@@ -23,11 +23,11 @@
         <!-- Default for deploy -->
         <property name="deploy.flag" value="false"/>
 
-        <build.module dir="api" symbolicName="api.lucidj.artdeployer" version="1.0.0"
+        <build.module dir="api" symbolicName="api.lucidj.artdeployer" version="1.1.0"
             exports="api.lucidj.artdeployer;version=1.0.0"
             deploy="${deploy.flag}" outfileProperty="api-artdeployer.jar"/>
 
-        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.0.0" deploy="${deploy.flag}">
+        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.1.0" deploy="${deploy.flag}">
             <classpath>
                 <pathelement path="${api-artdeployer.jar}"/>
             </classpath>
