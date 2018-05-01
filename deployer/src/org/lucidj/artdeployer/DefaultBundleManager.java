@@ -95,29 +95,12 @@ public class DefaultBundleManager implements BundleManager, BundleListener
     public DefaultBundleManager ()
     {
         bundle_prop_cache = new ConcurrentHashMap<> ();
-
-        // TODO: THIS SHOULD BE RECONFIGURABLE
-        cache_dir = System.getProperty ("system.data") + "/bundle-manager/" + this.getClass ().getSimpleName ();
-
-        File check_cache_dir = new File (cache_dir);
-
-        if (!check_cache_dir.exists ())
-        {
-            if (check_cache_dir.mkdirs ())
-            {
-                log.info ("Creating cache {}", cache_dir);
-            }
-            else
-            {
-                log.error ("Error creating cache {}", cache_dir);
-            }
-        }
     }
 
     private File get_bundle_data_file (String location)
     {
         // <Sanitized location>.properties
-        return (new File (cache_dir + "/" + location.replaceAll ("\\p{P}", "_") + ".properties"));
+        return (new File (cache_dir, location.replaceAll ("\\p{P}", "_") + ".properties"));
     }
 
     private void populate_cache ()
@@ -283,7 +266,7 @@ public class DefaultBundleManager implements BundleManager, BundleListener
             // Nope
             return;
         }
-        
+
         // Store bundle state
         properties.setProperty (Constants.PROP_BUNDLE_STATE, Integer.toString (bnd.getState ()));
         properties.setProperty (Constants.PROP_BUNDLE_STATE_HUMAN, get_state_string (bnd.getState ()));
@@ -375,7 +358,7 @@ public class DefaultBundleManager implements BundleManager, BundleListener
     public Manifest getManifest (File file)
     {
         FileInputStream file_stream = null;
-        
+
         try
         {
             if (file.isDirectory ())
@@ -459,7 +442,6 @@ public class DefaultBundleManager implements BundleManager, BundleListener
                 }
             }
         }
-
         return (latest_bundle);
     }
 
@@ -590,7 +572,6 @@ public class DefaultBundleManager implements BundleManager, BundleListener
                 return (true);
             }
         }
-
         return false;
     }
 
@@ -655,7 +636,6 @@ public class DefaultBundleManager implements BundleManager, BundleListener
                 }
             }
         }
-
         return (found_bundle);
     }
 
@@ -673,7 +653,6 @@ public class DefaultBundleManager implements BundleManager, BundleListener
                 bundle_list.put (bundle, entry.getValue ());
             }
         }
-
         return (bundle_list);
     }
 
@@ -690,15 +669,57 @@ public class DefaultBundleManager implements BundleManager, BundleListener
         return (bnd_props == null? default_value: bnd_props.getProperty (key, default_value));
     }
 
+    private boolean check_or_create_dir (String try_cache_dir)
+    {
+        File cache_dir_file = new File (try_cache_dir);
+
+        if (!cache_dir_file.exists ())
+        {
+            if (cache_dir_file.mkdirs ())
+            {
+                log.info ("Creating cache dir: {}", try_cache_dir);
+            }
+        }
+        return (cache_dir_file.canRead ());
+    }
+
     @Validate
     private void validate ()
     {
+        // TODO: To be clear, this is crappy. Use ConfigAdmin asap. For now does about the same as Felix main().
+
+        // Try the main property
+        if ((cache_dir = context.getProperty (Constants.ARTIFACT_CACHE_DIR_PROPERTY)) == null)
+        {
+            // We only build a deploy_dir_config if ARTIFACT_CACHE_DIR_PROPERTY is NOT set.
+            // Our mission is leave a reasonable non null cache_dir.
+            String system_home = context.getProperty ("system.data");
+            cache_dir =
+                ((system_home != null)? system_home: ".")
+                + "/"
+                + Constants.ARTIFACT_CACHE_DIR_VALUE;
+        }
+
+        if (!check_or_create_dir (cache_dir))
+        {
+            cache_dir =
+                context.getDataFile ("").getAbsolutePath()
+                + "/" +
+                Constants.ARTIFACT_CACHE_DIR_VALUE;
+
+            if (!check_or_create_dir (cache_dir))
+            {
+                // TODO: HANDLE PROPERLY NO-CACHE CASE
+                log.error ("Unable to read or create cache directory");
+                return;
+            }
+        }
+
         // Load references to all bundles we manage
         populate_cache ();
 
         // Start listening to bundle events
         context.addBundleListener (this);
-
         log.info ("DefaultBundleManager started");
     }
 
@@ -707,7 +728,6 @@ public class DefaultBundleManager implements BundleManager, BundleListener
     {
         // Stop listening to bundle events
         context.removeBundleListener (this);
-
         log.info ("DefaultBundleManager stopped");
     }
 }

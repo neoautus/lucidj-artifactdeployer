@@ -18,6 +18,11 @@ package org.lucidj.artdeployer;
 
 public interface Constants
 {
+    String ARTIFACT_DEPLOY_DIR_PROPERTY = "artdeployer.deploy.dir";
+    String ARTIFACT_DEPLOY_DIR_VALUE    = "deploy";
+    String ARTIFACT_CACHE_DIR_PROPERTY  = "artdeployer.cache.dir";
+    String ARTIFACT_CACHE_DIR_VALUE     = "artdeployer-cache";
+
     String PROP_DEPLOYMENT_ENGINE  = ".Artifact-Deployment-Engine";
     String PROP_LOCATION           = ".Artifact-Location";
     String PROP_LAST_MODIFIED      = ".Artifact-Last-Modified";

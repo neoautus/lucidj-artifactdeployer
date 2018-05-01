@@ -53,6 +53,7 @@ public class DeploymentScanner implements Runnable
 
     private Map<String, Exception> troubled_artifacts = new HashMap<> ();
 
+    private String deploy_dir_config;
     private String watched_dir_uri;
     private File watched_dir_file;
     private Thread poll_thread;
@@ -102,7 +103,6 @@ public class DeploymentScanner implements Runnable
         }
     }
 
-
     private void locate_added_bundles ()
     {
         File[] package_list = watched_dir_file.listFiles ();
@@ -145,37 +145,25 @@ public class DeploymentScanner implements Runnable
     @Validate
     private void validate ()
     {
-        // Configuration
-        // TODO: THIS SHOULD BE RECONFIGURABLE!!!
-        String dir_to_watch = System.getProperty ("system.home") + "/system/apps";
+        // TODO: To be clear, this is crappy. Use ConfigAdmin asap. For now does about the same as Felix main().
 
-        try
+        // Try the main property
+        if ((deploy_dir_config = context.getProperty (Constants.ARTIFACT_DEPLOY_DIR_PROPERTY)) == null)
         {
-            File dir = new File (dir_to_watch);
-
-            if (dir.exists () && dir.canRead ())
-            {
-                watched_dir_file = dir;
-            }
+            // We only build a deploy_dir_config if ARTIFACT_DEPLOY_DIR_PROPERTY is NOT set.
+            // Our mission is leave a reasonable non null deploy_dir_config.
+            String system_home = context.getProperty ("system.home");
+            deploy_dir_config =
+                ((system_home != null)? system_home: ".")
+                + "/"
+                + Constants.ARTIFACT_DEPLOY_DIR_VALUE;
         }
-        catch (Exception ignore) {};
 
-        if (watched_dir_file != null)
-        {
-            // Start things
-            poll_thread = new Thread (this);
-            poll_thread.setName (this.getClass ().getSimpleName ());
-            poll_thread.start ();
-
-            // Store the URI
-            watched_dir_uri = watched_dir_file.toURI ().toString ();
-
-            log.info ("DeploymentScanner started: Scanning: {}", watched_dir_uri);
-        }
-        else
-        {
-            log.info ("DeploymentScanner NOT started: Directory {} is missing or unreadable", dir_to_watch);
-        }
+        // Start things
+        poll_thread = new Thread (this);
+        poll_thread.setName (this.getClass ().getSimpleName ());
+        poll_thread.start ();
+        log.info ("DeploymentScanner configured dir: {}", deploy_dir_config);
     }
 
     @Invalidate
@@ -183,24 +171,64 @@ public class DeploymentScanner implements Runnable
     {
         try
         {
-            // Stop things, wait 10secs to clean stop
+            // Stop things, wait at most 10 secs for clean stop
             poll_thread.interrupt ();
             poll_thread.join (10000);
         }
         catch (InterruptedException ignore) {};
-
         log.info ("DeploymentScanner stopped");
     }
 
     @Override // Runnable
     public void run ()
     {
+        long last_complaint = 0;
+        long complain_interval = 60 * 5 * 1000;     // Complain every 5 minutes
+
         while (!poll_thread.isInterrupted ())
         {
             try
             {
-                poll_repository_for_updates_and_removals ();
-                locate_added_bundles ();
+                // Check whether current scanning dir is still valid
+                if (watched_dir_file != null)
+                {
+                    // We can have race conditions below, however this check helps a lot the lone operator
+                    if (!watched_dir_file.exists() || !watched_dir_file.canRead())
+                    {
+                        watched_dir_file = null;
+                        log.warn ("DeploymentScanner NOT started: Directory {} is missing or unreadable", deploy_dir_config);
+                    }
+                }
+
+                // Try to validate the configured path to use as scan directory
+                if (watched_dir_file == null)
+                {
+                    File dir = new File (deploy_dir_config);
+
+                    if (dir.exists () && dir.canRead ())
+                    {
+                        watched_dir_file = dir;
+                        watched_dir_uri = watched_dir_file.toURI ().toString ();
+                        log.info ("DeploymentScanner started: Scanning directory {}", watched_dir_file);
+                    }
+                }
+
+                // Do your job
+                if (watched_dir_file != null)
+                {
+                    poll_repository_for_updates_and_removals ();
+                    locate_added_bundles ();
+                }
+                else
+                {
+                    // Don't be too silent about problems
+                    if (last_complaint + complain_interval < System.currentTimeMillis ())
+                    {
+                        log.warn ("Missing directory {}: {}",
+                            Constants.ARTIFACT_DEPLOY_DIR_PROPERTY, deploy_dir_config);
+                        last_complaint = System.currentTimeMillis ();
+                    }
+                }
 
                 synchronized (this)
                 {
@@ -225,8 +253,7 @@ public class DeploymentScanner implements Runnable
                     // This bundle has been uninstalled, exiting loop
                     break;
                 }
-
-                log.error ("Package deployment exception", t);
+                log.error ("Artifact deployment exception", t);
             }
         }
     }
