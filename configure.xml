@@ -88,7 +88,30 @@
         <touch file="${setup.ok.file}" verbose="false"/>
     </target>
 
-    <!-- Fetch dependencies and place jars on cache/lib/[dependency-group] -->
+    <!-- Fetch dependencies from Github and place jars on cache/lib/[group] -->
+    <macrodef name="getDependency">
+        <attribute name="group"/>
+        <attribute name="org"/>
+        <attribute name="name"/>
+        <attribute name="rev"/>
+        <attribute name="type" default="jar"/>
+        <sequential>
+            <local name="dest.file"/>
+            <property name="dest.file" value="${libcache.dir}/@{group}/@{name}-@{rev}.@{type}"/>
+            <if><not><available file="${dest.file}"/></not>
+                <then>
+                    <mkdir dir="${libcache.dir}/@{group}"/>
+                    <get dest="${libcache.dir}/@{group}/@{name}.tmp"
+                         src="https://github.com/@{org}/releases/download/@{rev}/@{name}-@{rev}.jar"
+                         skipexisting="false"/>
+                    <move file="${libcache.dir}/@{group}/@{name}.tmp"
+                          tofile="${dest.file}"/>
+                </then>
+            </if>
+        </sequential>
+    </macrodef>
+
+    <!-- Fetch dependencies and place jars on cache/lib/[id] -->
     <macrodef name="resolvePath">
         <attribute name="id"/>
         <attribute name="type" default="jar,bundle"/>

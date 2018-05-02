@@ -18,17 +18,33 @@
 
     <import file="configure.xml"/>
 
+    <target name="getlibs" depends="configure.getlibs">
+
+        <getDependency group="project-libs"
+            org="neoautus/lucidj-stddef" name="org.lucidj.api.stddef" rev="1.0.1"/>
+
+        <path id="project-libs">
+            <fileset dir="${libcache.dir}" includes="project-libs/**/*.jar"/>
+        </path>
+
+    </target>
+
     <target name="build-all" depends="init">
 
         <!-- Default for deploy -->
         <property name="deploy.flag" value="false"/>
 
-        <build.module dir="api" symbolicName="api.lucidj.artdeployer" version="1.1.0"
-            exports="api.lucidj.artdeployer;version=1.0.0"
-            deploy="${deploy.flag}" outfileProperty="api-artdeployer.jar"/>
-
-        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.1.0" deploy="${deploy.flag}">
+        <build.module dir="api" symbolicName="org.lucidj.api.artdeployer" version="1.2.0"
+            exports="org.lucidj.api.artdeployer;version=1.2.0"
+            deploy="${deploy.flag}" outfileProperty="api-artdeployer.jar">
             <classpath>
+                <path refid="project-libs"/>
+            </classpath>
+        </build.module>
+
+        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.2.0" deploy="${deploy.flag}">
+            <classpath>
+                <path refid="project-libs"/>
                 <pathelement path="${api-artdeployer.jar}"/>
             </classpath>
         </build.module>

@@ -14,14 +14,15 @@
  * the License.
  */
 
-package api.lucidj.artdeployer;
+package org.lucidj.api.artdeployer;
 
 import java.net.URI;
 import java.util.Properties;
 
+import org.lucidj.api.stddef.Aggregate;
 import org.osgi.framework.Bundle;
 
-public interface Artifact
+public interface Artifact extends Aggregate
 {
     // Extended states
     int STATE_EX_ERROR    = -1;    // Error obtaining extended state

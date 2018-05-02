@@ -10,9 +10,9 @@
     <orderEntry type="library" scope="PROVIDED" name="OSGi R5" level="project" />
     <orderEntry type="library" scope="PROVIDED" name="iPOJO" level="project" />
     <orderEntry type="module-library" scope="PROVIDED">
-      <library name="api.lucidj.artdeployer-1.0.0">
+      <library name="org.lucidj.api.artdeployer">
         <CLASSES>
-          <root url="jar://$MODULE_DIR$/../dist/api.lucidj.artdeployer-1.0.0.jar!/" />
+          <root url="jar://$MODULE_DIR$/../dist/org.lucidj.api.artdeployer-1.2.0.jar!/" />
         </CLASSES>
         <JAVADOC />
         <SOURCES />

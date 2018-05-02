@@ -14,7 +14,7 @@
  * the License.
  */
 
-package api.lucidj.artdeployer;
+package org.lucidj.api.artdeployer;
 
 import org.osgi.framework.Bundle;
 

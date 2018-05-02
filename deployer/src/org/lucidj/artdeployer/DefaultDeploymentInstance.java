@@ -21,8 +21,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Properties;
 
-import api.lucidj.artdeployer.Artifact;
-import api.lucidj.artdeployer.BundleManager;
+import org.lucidj.api.artdeployer.Artifact;
+import org.lucidj.api.artdeployer.BundleManager;
 import org.osgi.framework.Bundle;
 
 // TODO: USE ServiceObject
