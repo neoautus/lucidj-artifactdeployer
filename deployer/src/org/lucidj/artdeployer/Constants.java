@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 NEOautus Ltd. (http://neoautus.com)
+ * Copyright 2018 NEOautus Ltd. (http://neoautus.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -22,6 +22,8 @@ public interface Constants
     String ARTIFACT_DEPLOY_DIR_VALUE    = "deploy";
     String ARTIFACT_CACHE_DIR_PROPERTY  = "artdeployer.cache.dir";
     String ARTIFACT_CACHE_DIR_VALUE     = "artdeployer-cache";
+    String ARTIFACT_STARTLEVEL_PROPERTY = "artdeployer.startlevel";
+    int    ARTIFACT_STARTLEVEL_VALUE    = -1;
 
     String PROP_DEPLOYMENT_ENGINE  = ".Artifact-Deployment-Engine";
     String PROP_LOCATION           = ".Artifact-Location";

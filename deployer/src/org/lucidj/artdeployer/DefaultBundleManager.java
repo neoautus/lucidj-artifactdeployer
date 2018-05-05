@@ -278,7 +278,7 @@ public class DefaultBundleManager implements BundleManager, BundleListener
             {
                 // This forces framework to try to get bundle resolved
                 bnd.getResource ("META-INF/MANIFEST.MF");
-                log.info ("Bundle {} installed -- trying to resolve", bnd);
+                log.debug ("Bundle {} installed -- trying to resolve", bnd);
                 msg = "INSTALLED";
                 break;
             }
@@ -293,12 +293,12 @@ public class DefaultBundleManager implements BundleManager, BundleListener
                 {
                     if (Constants.BUNDLE_START_TRANSIENT.equalsIgnoreCase (properties.getProperty (Constants.PROP_BUNDLE_START, Constants.BUNDLE_START_NORMAL)))
                     {
-                        log.info ("Bundle {} is resolved -- will start transient now", bnd);
+                        log.debug ("Bundle {} is resolved -- will start transient now", bnd);
                         bnd.start (Bundle.START_TRANSIENT);
                     }
                     else
                     {
-                        log.info ("Bundle {} is resolved -- will start now", bnd);
+                        log.debug ("Bundle {} is resolved -- will start now", bnd);
                         bnd.start ();
                     }
                 }
@@ -311,9 +311,9 @@ public class DefaultBundleManager implements BundleManager, BundleListener
             }
             case BundleEvent.STARTED:
             {
-                log.info ("Bundle {} is now ACTIVE", bnd);
+                log.info ("Bundle started: {}", bnd);
                 msg = "STARTED";
-                cycle_pending_installed_bundles ();     // Give a chance to other bundles resolve
+                cycle_pending_installed_bundles ();     // Give a chance for other bundles to resolve
                 break;
             }
             case BundleEvent.STARTING:
@@ -345,7 +345,7 @@ public class DefaultBundleManager implements BundleManager, BundleListener
             {
                 // This forces framework to try to get bundle resolved
                 bnd.getResource ("META-INF/MANIFEST.MF");
-                log.info ("Bundle {} updated -- trying to resolve", bnd);
+                log.info ("Bundle updated: {}", bnd);
                 msg = "UPDATED";
                 break;
             }

@@ -19,6 +19,9 @@ package org.lucidj.artdeployer;
 import org.lucidj.api.artdeployer.Artifact;
 import org.lucidj.api.artdeployer.ArtifactDeployer;
 import org.lucidj.api.artdeployer.BundleManager;
+import org.osgi.framework.FrameworkEvent;
+import org.osgi.framework.FrameworkListener;
+import org.osgi.framework.startlevel.FrameworkStartLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +41,7 @@ import org.apache.felix.ipojo.annotations.Validate;
 
 @Component (immediate = true, publicFactory = false)
 @Instantiate
-public class DeploymentScanner implements Runnable
+public class DeploymentScanner implements Runnable, FrameworkListener
 {
     private final static Logger log = LoggerFactory.getLogger (DeploymentScanner.class);
 
@@ -58,6 +61,9 @@ public class DeploymentScanner implements Runnable
     private File watched_dir_file;
     private Thread poll_thread;
     private int thread_poll_ms = 1000;
+
+    private FrameworkStartLevel fw_startlevel;
+    private int deploy_startlevel;
 
     private void poll_repository_for_updates_and_removals ()
     {
@@ -142,6 +148,26 @@ public class DeploymentScanner implements Runnable
         }
     }
 
+    private int get_int_startlevel(String probable_int)
+    {
+        try
+        {
+            return ((probable_int == null)? -1: Integer.parseInt (probable_int));
+        }
+        catch (NumberFormatException ignore)
+        {
+            return (-1);
+        }
+    }
+
+    private void start ()
+    {
+        // Start things
+        poll_thread = new Thread (this);
+        poll_thread.setName (this.getClass ().getSimpleName ());
+        poll_thread.start ();
+    }
+
     @Validate
     private void validate ()
     {
@@ -159,11 +185,46 @@ public class DeploymentScanner implements Runnable
                 + Constants.ARTIFACT_DEPLOY_DIR_VALUE;
         }
 
-        // Start things
-        poll_thread = new Thread (this);
-        poll_thread.setName (this.getClass ().getSimpleName ());
-        poll_thread.start ();
+        // Do we have to wait for a specific startlevel?
+        String deploy_startlevel_prop = context.getProperty (Constants.ARTIFACT_STARTLEVEL_PROPERTY);
+
+        if ((deploy_startlevel = get_int_startlevel (deploy_startlevel_prop)) == -1)
+        {
+            deploy_startlevel = Constants.ARTIFACT_STARTLEVEL_VALUE;
+        }
+
+        // Retrieve framework start level control object
+        fw_startlevel = context.getBundle (0).adapt (FrameworkStartLevel.class);
+
+        // Should we start right now?
+        if (deploy_startlevel <= fw_startlevel.getStartLevel ())
+        {
+            start ();
+        }
+        else
+        {
+            // Let's listen for startlevel changes
+            context.addFrameworkListener (this);
+            log.info ("DeploymentScanner waiting for start level {}", deploy_startlevel);
+        }
+
         log.info ("DeploymentScanner configured dir: {}", deploy_dir_config);
+    }
+
+    @Override
+    public void frameworkEvent(FrameworkEvent frameworkEvent)
+    {
+        if (frameworkEvent.getType () == FrameworkEvent.STARTED
+            || frameworkEvent.getType () == FrameworkEvent.STARTLEVEL_CHANGED)
+        {
+            if (deploy_startlevel <= fw_startlevel.getStartLevel ())
+            {
+                // We don't need to listen anymore
+                log.info ("Startlevel reached: {}", deploy_startlevel);
+                context.removeFrameworkListener (this);
+                start ();
+            }
+        }
     }
 
     @Invalidate
@@ -224,8 +285,7 @@ public class DeploymentScanner implements Runnable
                     // Don't be too silent about problems
                     if (last_complaint + complain_interval < System.currentTimeMillis ())
                     {
-                        log.warn ("Missing directory {}: {}",
-                            Constants.ARTIFACT_DEPLOY_DIR_PROPERTY, deploy_dir_config);
+                        log.warn ("Missing deployment directory: {}", deploy_dir_config);
                         last_complaint = System.currentTimeMillis ();
                     }
                 }

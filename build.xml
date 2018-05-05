@@ -34,15 +34,15 @@
         <!-- Default for deploy -->
         <property name="deploy.flag" value="false"/>
 
-        <build.module dir="api" symbolicName="org.lucidj.api.artdeployer" version="1.2.0"
-            exports="org.lucidj.api.artdeployer;version=1.2.0"
+        <build.module dir="api" symbolicName="org.lucidj.api.artdeployer" version="1.3.0"
+            exports="org.lucidj.api.artdeployer;version=1.3.0"
             deploy="${deploy.flag}" outfileProperty="api-artdeployer.jar">
             <classpath>
                 <path refid="project-libs"/>
             </classpath>
         </build.module>
 
-        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.2.0" deploy="${deploy.flag}">
+        <build.module dir="deployer" symbolicName="org.lucidj.artdeployer" version="1.3.0" deploy="${deploy.flag}">
             <classpath>
                 <path refid="project-libs"/>
                 <pathelement path="${api-artdeployer.jar}"/>
